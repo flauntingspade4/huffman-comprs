@@ -5,7 +5,8 @@ authors = ["flauntingspade4 <48335751+flauntingspade4@users.noreply.github.com>"
 edition = "2018"
 
 [dependencies]
-serde = {version = "1.0.117", features = ["macros"], optional = true}
+serde = {version = "1.0.117", features = ["derive"], optional = true}
 
 [features]
-default = ["serde"]
+default = ["serde_support"]
+serde_support = ["serde"]

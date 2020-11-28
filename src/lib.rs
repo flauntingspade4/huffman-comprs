@@ -1,10 +1,38 @@
-type Child = Option<Box<Huffman>>;
+//! A small crate, defining a [Huffman tree](struct.Huffman.html), and easy methods to generate one
+//! # Example
+//! ```
+//! use comprs::Huffman;
+//!
+//! let input = "This is a test input";
+//!
+//! // A Huffman tree can be generated from anything
+//! // that can be made into a &str
+//! let huffman = Huffman::from(input);
+//!
+//! assert_eq!("101".to_string(), huffman.get_code('i').unwrap());
+//! ```
 
+#[cfg(feature = "serde_support")]
+use serde::{Deserialize, Serialize};
+
+/// A huffman encoding metadata tree.
+/// # Examples
+/// ```
+/// use comprs::Huffman;
+///
+/// let script = "aabcd";
+///
+/// let huffman = Huffman::from(script);
+///
+/// assert_eq!("0".to_string(), huffman.get_code('a').unwrap());
+///
+/// ```
+#[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
 #[derive(Default, Debug, Clone)]
 pub struct Huffman {
     freq: usize,
-    pub left: Child,
-    pub right: Child,
+    left: Option<Box<Huffman>>,
+    right: Option<Box<Huffman>>,
     contents: Vec<char>,
 }
 
@@ -17,7 +45,7 @@ impl Huffman {
             contents,
         }
     }
-    fn from_children(left: Self, right: Self) -> Self {
+    fn build_from_children(left: Self, right: Self) -> Self {
         let mut contents = left.contents.clone();
         contents.append(&mut right.contents.clone());
 
@@ -28,25 +56,41 @@ impl Huffman {
             contents,
         }
     }
-    /*fn add_child(&mut self, contents: char, freq: usize) {
-        self.contents.push(contents);
-        self.freq += freq;
-        if let Some(left) = &mut self.left {
-            if let Some(right) = &mut self.right {
-                left.max(right).add_child(contents, freq);
-            } else {
-                self.right = Some(Box::new(Self::new(vec![contents], freq)));
-            }
+    /// Gets the code of a specified character
+    ///
+    /// # Errors
+    /// Returns `None` if no matching code
+    /// is found in the tree
+    pub fn get_code(&self, to_get: char) -> Option<String> {
+        let mut code = String::new();
+        self._get_code(to_get, &mut code);
+
+        if !code.is_empty() {
+            Some(code)
         } else {
-            self.left = Some(Box::new(Self::new(vec![contents], freq)));
+            None
         }
-    }*/
+    }
+    fn _get_code(&self, to_get: char, code: &mut String) {
+        if let Some(left) = &self.left {
+            if left.contents.contains(&to_get) {
+                code.push('0');
+                left._get_code(to_get, code);
+            }
+        }
+        if let Some(right) = &self.right {
+            if right.contents.contains(&to_get) {
+                code.push('1');
+                right._get_code(to_get, code);
+            }
+        }
+    }
+    /// The frequency of all the characters in the huffman tree.
+    /// Should be equal to the length of the given input
     pub fn freq(&self) -> usize {
         self.freq
     }
-    pub fn is_full(&self) -> bool {
-        self.left.is_some() && self.right.is_some()
-    }
+    /// Gets a reference to the current tree's contents
     pub fn contents(&self) -> &Vec<char> {
         &self.contents
     }
@@ -76,25 +120,23 @@ impl<'a, T: Into<&'a str>> From<T> for Huffman {
     fn from(buf: T) -> Self {
         let buf = buf.into();
 
-        let mut all_contents: Vec<(char, usize)> = Vec::new();
-
-        for byte in buf.chars() {
-            if let Some(i) = all_contents.iter().position(|a| a.0 == byte) {
-                all_contents[i].1 += 1;
+        let mut contents = Vec::new();
+        for character in buf.chars() {
+            if let Some(i) = contents
+                .iter()
+                .position(|a: &Huffman| a.contents[0] == character)
+            {
+                contents[i].freq += 1;
             } else {
-                all_contents.push((byte, 1));
+                contents.push(Huffman::new(vec![character], 1));
             }
-        }
-
-        let mut contents = Vec::with_capacity(all_contents.len());
-        for item in all_contents {
-            contents.push(Self::new(vec![item.0], item.1));
         }
 
         while contents.len() > 1 {
             contents.sort();
 
-            let parent = Huffman::from_children(contents.pop().unwrap(), contents.pop().unwrap());
+            let parent =
+                Huffman::build_from_children(contents.pop().unwrap(), contents.pop().unwrap());
             contents.push(parent);
         }
 
@@ -104,21 +146,11 @@ impl<'a, T: Into<&'a str>> From<T> for Huffman {
 
 #[test]
 fn from_hello_world() {
-    let script = include_str!("../script.txt");
+    let script = "aabc";
 
     let huffman = Huffman::from(script);
-
-    println!("{:#?}", huffman);
+	
+	assert_eq!("1".to_string(), huffman.get_code('a').unwrap());
+	assert_eq!("01".to_string(), huffman.get_code('b').unwrap());
+	assert_eq!("00".to_string(), huffman.get_code('c').unwrap());
 }
-
-/*#[test]
-fn add_child() {
-    let mut huffman = Huffman::default();
-
-    huffman.add_child('a', 2);
-    huffman.add_child('b', 1);
-    huffman.add_child('c', 1);
-    huffman.add_child('d', 1);
-
-    println!("{:?}", huffman);
-}*/
