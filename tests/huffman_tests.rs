@@ -6,9 +6,9 @@ fn from_hello_world() {
 
     let huffman = Huffman::from(script);
 
-    assert_eq!(bitvec![Msb0, u8; 1], huffman.get_code('a').unwrap());
-    assert_eq!(bitvec![Msb0, u8; 0, 1], huffman.get_code('b').unwrap());
-    assert_eq!(bitvec![Msb0, u8; 0, 0], huffman.get_code('c').unwrap());
+    assert_eq!(vec![true], huffman.get_code('a').unwrap());
+    assert_eq!(vec![false, true], huffman.get_code('b').unwrap());
+    assert_eq!(vec![false, false], huffman.get_code('c').unwrap());
 }
 
 #[cfg(feature = "serde_support")]

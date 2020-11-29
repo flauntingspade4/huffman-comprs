@@ -15,9 +15,6 @@
 #[cfg(feature = "serde_support")]
 use serde::{Deserialize, Serialize};
 
-pub use bitvec::prelude::*;
-pub use bitvec::vec::BitVec;
-
 /// A huffman encoding metadata tree.
 /// # Examples
 /// ```
@@ -71,8 +68,8 @@ impl Huffman {
     /// # Errors
     /// Returns `None` if no matching code
     /// is found in the tree
-    pub fn get_code(&self, to_get: char) -> Option<BitVec> {
-        let mut code = BitVec::new();
+    pub fn get_code(&self, to_get: char) -> Option<Vec<bool>> {
+        let mut code = Vec::new();
         self._get_code(to_get, &mut code);
 
         if !code.is_empty() {
@@ -81,7 +78,7 @@ impl Huffman {
             None
         }
     }
-    fn _get_code(&self, to_get: char, code: &mut BitVec) {
+    fn _get_code(&self, to_get: char, code: &mut Vec<bool>) {
         if let Some(left) = &self.left {
             if left.contents.contains(&to_get) {
                 code.push(false);
@@ -94,6 +91,51 @@ impl Huffman {
                 right._get_code(to_get, code);
             }
         }
+    }
+    pub fn get_char(&self, mut input: Vec<bool>) -> Option<char> {
+        input.reverse();
+        self._get_char(&mut input)
+    }
+    fn _get_char(&self, input: &mut Vec<bool>) -> Option<char> {
+        if self.contents.len() == 1 {
+            Some(self.contents[0])
+        } else {
+            if input.pop().unwrap() {
+                if let Some(right) = &self.right {
+                    right._get_char(input)
+                } else {
+                    None
+                }
+            } else {
+                if let Some(left) = &self.left {
+                    left._get_char(input)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+    /// Attempts to reconstruct a String from a given Vec<bool>, also taking
+    /// a usize 'zeros', indicating how many '0's are appended upon the end of
+    /// input. This should be the fifth byte of the .rz file
+    pub fn reconstruct(&self, mut input: Vec<bool>, zeros: usize) -> Option<String> {
+        let mut to_return = String::new();
+
+        for _ in 0..zeros {
+            input.pop();
+        }
+
+        input.reverse();
+
+        while !input.is_empty() {
+            let c = match self._get_char(&mut input) {
+                Some(c) => c,
+                None => break,
+            };
+            to_return.push(c);
+        }
+
+        Some(to_return)
     }
     /// The frequency of all the characters in the huffman tree.
     /// Should be equal to the length of the given input
