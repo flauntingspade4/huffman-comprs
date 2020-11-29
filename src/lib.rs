@@ -47,7 +47,7 @@ pub struct Huffman {
 }
 
 impl Huffman {
-    fn new(contents: Vec<char>, freq: usize) -> Self {
+    const fn new(contents: Vec<char>, freq: usize) -> Self {
         Self {
             freq,
             left: None,
@@ -97,11 +97,11 @@ impl Huffman {
     }
     /// The frequency of all the characters in the huffman tree.
     /// Should be equal to the length of the given input
-    pub fn freq(&self) -> usize {
+    pub const fn freq(&self) -> usize {
         self.freq
     }
     /// Gets a reference to the current tree's contents
-    pub fn contents(&self) -> &Vec<char> {
+    pub const fn contents(&self) -> &Vec<char> {
         &self.contents
     }
 }
