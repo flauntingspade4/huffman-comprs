@@ -1,7 +1,7 @@
-//! A small crate, defining a [Huffman tree](struct.Huffman.html), and easy methods to generate one
+//! A small crate, defining a [Huffman tree](https://en.wikipedia.org/wiki/Huffman_coding), and easy methods to generate one
 //! # Example
 //! ```
-//! use comprs::Huffman;
+//! use huffman_comprs::*;
 //!
 //! let input = "This is a test input";
 //!
@@ -9,30 +9,40 @@
 //! // that can be made into a &str
 //! let huffman = Huffman::from(input);
 //!
-//! assert_eq!("101".to_string(), huffman.get_code('i').unwrap());
+//! assert_eq!(bitvec![Msb0, u8; 1, 0, 1], huffman.get_code('i').unwrap());
 //! ```
 
 #[cfg(feature = "serde_support")]
 use serde::{Deserialize, Serialize};
 
+pub use bitvec::prelude::*;
+pub use bitvec::vec::BitVec;
+
 /// A huffman encoding metadata tree.
 /// # Examples
 /// ```
-/// use comprs::Huffman;
+/// use huffman_comprs::*;
 ///
 /// let script = "aabcd";
 ///
 /// let huffman = Huffman::from(script);
 ///
-/// assert_eq!("0".to_string(), huffman.get_code('a').unwrap());
-///
+/// assert_eq!(bitvec![Msb0, u8; 0], huffman.get_code('a').unwrap());
 /// ```
-#[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "serde_support",
+    derive(Serialize, Deserialize),
+    serde(rename = "h")
+)]
 #[derive(Default, Debug, Clone)]
 pub struct Huffman {
+    #[cfg_attr(feature = "serde_support", serde(rename = "f"))]
     freq: usize,
+    #[cfg_attr(feature = "serde_support", serde(rename = "l"))]
     left: Option<Box<Huffman>>,
+    #[cfg_attr(feature = "serde_support", serde(rename = "r"))]
     right: Option<Box<Huffman>>,
+    #[cfg_attr(feature = "serde_support", serde(rename = "c"))]
     contents: Vec<char>,
 }
 
@@ -61,8 +71,8 @@ impl Huffman {
     /// # Errors
     /// Returns `None` if no matching code
     /// is found in the tree
-    pub fn get_code(&self, to_get: char) -> Option<String> {
-        let mut code = String::new();
+    pub fn get_code(&self, to_get: char) -> Option<BitVec> {
+        let mut code = BitVec::new();
         self._get_code(to_get, &mut code);
 
         if !code.is_empty() {
@@ -71,16 +81,16 @@ impl Huffman {
             None
         }
     }
-    fn _get_code(&self, to_get: char, code: &mut String) {
+    fn _get_code(&self, to_get: char, code: &mut BitVec) {
         if let Some(left) = &self.left {
             if left.contents.contains(&to_get) {
-                code.push('0');
+                code.push(false);
                 left._get_code(to_get, code);
             }
         }
         if let Some(right) = &self.right {
             if right.contents.contains(&to_get) {
-                code.push('1');
+                code.push(true);
                 right._get_code(to_get, code);
             }
         }
@@ -142,15 +152,4 @@ impl<'a, T: Into<&'a str>> From<T> for Huffman {
 
         contents.pop().unwrap()
     }
-}
-
-#[test]
-fn from_hello_world() {
-    let script = "aabc";
-
-    let huffman = Huffman::from(script);
-	
-	assert_eq!("1".to_string(), huffman.get_code('a').unwrap());
-	assert_eq!("01".to_string(), huffman.get_code('b').unwrap());
-	assert_eq!("00".to_string(), huffman.get_code('c').unwrap());
 }
