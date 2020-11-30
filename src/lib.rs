@@ -116,9 +116,9 @@ impl Huffman {
         }
     }
     /// Attempts to reconstruct a String from a given Vec<bool>, also taking
-    /// a usize 'zeros', indicating how many '0's are appended upon the end of
+    /// a u8 'zeros', indicating how many '0's are appended upon the end of
     /// input. This should be the fifth byte of the .rz file
-    pub fn reconstruct(&self, mut input: Vec<bool>, zeros: usize) -> Option<String> {
+    pub fn reconstruct(&self, mut input: Vec<bool>, zeros: u8) -> Option<String> {
         let mut to_return = String::new();
 
         for _ in 0..zeros {
