@@ -1,8 +1,12 @@
 # huffman-comprs
 
-A basic implementation of a Huffman Tree, in rust, with methods to generate it from a string reference
+huffman-comprs is a rust implementation of a Huffman tree, with a work-in-progress CLI to go with it, allowing fast compression and decompression from the associated .rz filetype
 
-# Example
+# Usage
+
+Both the library, and a basic cli are avaliable:
+
+## Library
 
 In `Cargo.toml` :
 
@@ -26,3 +30,10 @@ fn main() {
 	assert_eq!("101".to_string(), huffman.get_code('i').unwrap());
 }
 ```
+
+## CLI
+
+Function      | Description                               | Usage
+--------------|-------------------------------------------|-----------------------------------------------|
+compress      | Compresses the given text file 			  | `huffman-comprs-cli compress <FILENAME>`
+decompress	  | Decompresses the given `.rz` file 		  | `huffman-comprs-cli decompress <FILENAME>.rz`

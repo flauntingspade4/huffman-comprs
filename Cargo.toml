@@ -1,15 +1,5 @@
-[package]
-name = "huffman-comprs"
-version = "0.1.0"
-authors = ["flauntingspade4 <48335751+flauntingspade4@users.noreply.github.com>"]
-edition = "2018"
-
-[dependencies]
-serde = {version = "1.0.117", features = ["derive"], optional = true}
-
-[dev-dependencies]
-bincode = "*"
-
-[features]
-default = ["serde_support"]
-serde_support = ["serde"]
+[workspace]
+members = [
+  "huffman-comprs",
+  "huffman-comprs-cli",
+]

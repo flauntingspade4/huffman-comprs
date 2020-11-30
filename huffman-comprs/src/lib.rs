@@ -9,11 +9,17 @@
 //! // that can be made into a &str
 //! let huffman = Huffman::from(input);
 //!
-//! assert_eq!(bitvec![Msb0, u8; 1, 0, 1], huffman.get_code('i').unwrap());
+//! assert_eq!(vec![true, false, true], huffman.get_code('i').unwrap());
 //! ```
+
+use std::collections::BTreeMap;
 
 #[cfg(feature = "serde_support")]
 use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "rz")]
+mod rz;
+pub use rz::RZFile;
 
 /// A huffman encoding metadata tree.
 /// # Examples
@@ -24,22 +30,14 @@ use serde::{Deserialize, Serialize};
 ///
 /// let huffman = Huffman::from(script);
 ///
-/// assert_eq!(bitvec![Msb0, u8; 0], huffman.get_code('a').unwrap());
+/// assert_eq!(vec![false], huffman.get_code('a').unwrap());
 /// ```
-#[cfg_attr(
-    feature = "serde_support",
-    derive(Serialize, Deserialize),
-    serde(rename = "h")
-)]
+#[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
 #[derive(Default, Debug, Clone)]
 pub struct Huffman {
-    #[cfg_attr(feature = "serde_support", serde(rename = "f"))]
     freq: usize,
-    #[cfg_attr(feature = "serde_support", serde(rename = "l"))]
     left: Option<Box<Huffman>>,
-    #[cfg_attr(feature = "serde_support", serde(rename = "r"))]
     right: Option<Box<Huffman>>,
-    #[cfg_attr(feature = "serde_support", serde(rename = "c"))]
     contents: Vec<char>,
 }
 
@@ -92,43 +90,47 @@ impl Huffman {
             }
         }
     }
+    /// Attempts to get the `char` associated with a given code
+    /// # Errors
+    /// Returns `None` if no matching code
+    /// is found in the tree
+
     pub fn get_char(&self, mut input: Vec<bool>) -> Option<char> {
         input.reverse();
+
         self._get_char(&mut input)
     }
     fn _get_char(&self, input: &mut Vec<bool>) -> Option<char> {
         if self.contents.len() == 1 {
             Some(self.contents[0])
-        } else {
-            if input.pop().unwrap() {
-                if let Some(right) = &self.right {
-                    right._get_char(input)
-                } else {
-                    None
-                }
+        } else if input.pop().unwrap() {
+            if let Some(right) = &self.right {
+                right._get_char(input)
             } else {
-                if let Some(left) = &self.left {
-                    left._get_char(input)
-                } else {
-                    None
-                }
+                None
             }
+        } else if let Some(left) = &self.left {
+            left._get_char(input)
+        } else {
+            None
         }
     }
     /// Attempts to reconstruct a String from a given Vec<bool>, also taking
     /// a u8 'zeros', indicating how many '0's are appended upon the end of
     /// input. This should be the fifth byte of the .rz file
-    pub fn reconstruct(&self, mut input: Vec<bool>, zeros: u8) -> Option<String> {
+    pub fn reconstruct(&self, mut data: Vec<bool>, zeros: u8) -> Option<String> {
         let mut to_return = String::new();
 
+        data.reverse();
+
         for _ in 0..zeros {
-            input.pop();
+            data.pop();
         }
 
-        input.reverse();
+        data.reverse();
 
-        while !input.is_empty() {
-            let c = match self._get_char(&mut input) {
+        while !data.is_empty() {
+            let c = match self._get_char(&mut data) {
                 Some(c) => c,
                 None => break,
             };
@@ -138,13 +140,78 @@ impl Huffman {
         Some(to_return)
     }
     /// The frequency of all the characters in the huffman tree.
-    /// Should be equal to the length of the given input
+    /// This value should be equal to the total length of the string
+    /// used to generate this Huffman tree
     pub const fn freq(&self) -> usize {
         self.freq
     }
     /// Gets a reference to the current tree's contents
     pub const fn contents(&self) -> &Vec<char> {
         &self.contents
+    }
+    /// Converts self to a `BTreeMap<char, Vec<bool>>`, to allow for faster querying
+    pub fn to_btree(&self) -> BTreeMap<char, Vec<bool>> {
+        let mut b_tree = BTreeMap::new();
+
+        if let Some(left) = &self.left {
+            left._to_btree(&mut b_tree, vec![false]);
+        }
+        if let Some(right) = &self.right {
+            right._to_btree(&mut b_tree, vec![true]);
+        }
+
+        b_tree
+    }
+    fn _to_btree(&self, b_tree: &mut BTreeMap<char, Vec<bool>>, path: Vec<bool>) {
+        if self.contents.len() == 1 {
+            b_tree.insert(self.contents[0], path);
+        } else {
+            if let Some(left) = &self.left {
+                let mut left_path = path.clone();
+                left_path.push(false);
+                left._to_btree(b_tree, left_path);
+            }
+            if let Some(right) = &self.right {
+                let mut right_path = path;
+                right_path.push(true);
+                right._to_btree(b_tree, right_path);
+            }
+        }
+    }
+    /// Attempts to compress a given `&str` to a `Vec<bool>`, representing it's
+    /// compressed version
+    ///
+    /// # Errors
+    /// This method will fail and return `None` if any of the characters in `input`
+    /// are not contained in self's tree
+    pub fn compress(&self, input: &str) -> Option<Vec<bool>> {
+        let mut output = Vec::with_capacity(input.len());
+
+        let symbols = self.to_btree();
+
+        for character in input.chars() {
+            let c = symbols.get(&character)?;
+            output.reserve(c.len());
+            for t in c {
+                output.push(*t);
+            }
+        }
+
+        Some(output)
+    }
+    /// A utility function, splitting up `a` into a `Vec<bool>`, representing
+    /// it's bits
+    pub fn u8_to_bits(a: u8) -> Vec<bool> {
+        vec![
+            a & 128 == 128,
+            a & 64 == 64,
+            a & 32 == 32,
+            a & 16 == 16,
+            a & 8 == 8,
+            a & 4 == 4,
+            a & 2 == 2,
+            a & 1 == 1,
+        ]
     }
 }
 
@@ -168,10 +235,8 @@ impl Ord for Huffman {
     }
 }
 
-impl<'a, T: Into<&'a str>> From<T> for Huffman {
-    fn from(buf: T) -> Self {
-        let buf = buf.into();
-
+impl From<&str> for Huffman {
+    fn from(buf: &str) -> Self {
         let mut contents = Vec::new();
         for character in buf.chars() {
             if let Some(i) = contents

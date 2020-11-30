@@ -1,0 +1,17 @@
+[package]
+name = "huffman-comprs"
+version = "0.1.0"
+authors = ["flauntingspade4 <48335751+flauntingspade4@users.noreply.github.com>"]
+edition = "2018"
+
+[dependencies]
+bincode = {version = "*", optional = true}
+serde = {version = "1.0.117", features = ["derive"], optional = true}
+
+[dev-dependencies]
+clap = "2.33.3"
+
+[features]
+default = ["rz"]
+rz = ["serde_support", "bincode"]
+serde_support = ["serde"]
