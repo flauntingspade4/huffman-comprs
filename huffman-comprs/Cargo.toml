@@ -10,6 +10,11 @@ serde = {version = "1.0.117", features = ["derive"], optional = true}
 
 [dev-dependencies]
 clap = "2.33.3"
+criterion = "0.3.3"
+
+[[bench]]
+name = "decode"
+harness = false
 
 [features]
 default = ["rz"]
