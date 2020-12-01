@@ -94,7 +94,6 @@ impl Huffman {
     /// # Errors
     /// Returns `None` if no matching code
     /// is found in the tree
-
     pub fn get_char(&self, mut input: Vec<bool>) -> Option<char> {
         input.reverse();
 

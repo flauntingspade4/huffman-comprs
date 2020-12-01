@@ -6,12 +6,12 @@ use crate::Huffman;
 ///
 /// RZ files are constructed as such:
 ///
-/// | name	  	| size			   | usage																				  |
+/// | name      | size             | usage                                                                                |
 /// |-----------|------------------|--------------------------------------------------------------------------------------|
-/// | tree_len  | 4 bytes 		   | Indicates how many bytes the tree takes up											  |
-/// | zeros	  	| 1 byte    	   | Indicates how many 0s are appended onto the end of the data, so to make full bytes   |
-/// | tree	  	| tree_len bytes   | The actual Huffman tree															  |
-/// | data	  	| rest of the file | The data, compressed with the above huffman tree									  |
+/// | tree_len  | 4 bytes          | Indicates how many bytes the tree takes up                                           |
+/// | zeros     | 1 byte           | Indicates how many 0s are appended onto the end of the data, so to make full bytes   |
+/// | tree      | tree_len bytes   | The actual Huffman tree                                                              |
+/// | data      | rest of the file | The data, compressed with the above huffman tree                                     |
 ///
 /// [`RZFile`](struct.RZFile.html)s can be generated from `&[u8]`
 #[derive(Clone, Debug)]
