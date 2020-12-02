@@ -26,27 +26,26 @@ impl RZFile {
     /// Generates a RZ file from a given [`Huffman`](struct.Huffman.html) tree, and `Vec<bool>`, being the compressed data
     pub fn new(tree: Huffman, mut data: Vec<bool>) -> Self {
         let tree_len = bincode::serialize(&tree).unwrap().len() as u32;
-        let zeros = if data.len() % 8 != 0 {
-            let zeros = 8 - (data.len() % 8);
+
+        let mut data_new = Vec::with_capacity(data.len() / 8);
+
+        let len = data.len();
+
+        while !data.is_empty() {
+            let mut to_add = 0;
+            for i in 0..8 {
+                to_add += (data.pop().unwrap_or(false) as u8) * 2u16.pow(i) as u8;
+            }
+            data_new.push(to_add);
+        }
+
+        let zeros = if len % 8 != 0 {
+            let zeros = 8 - (len % 8);
             data.append(&mut vec![false; zeros]);
             zeros as u8
         } else {
             0
         };
-
-        let mut data_new = Vec::with_capacity(data.len() / 8);
-
-        data.reverse();
-
-        while !data.is_empty() {
-            let mut to_add = 0;
-            for i in 0..8 {
-                to_add += (data.pop().unwrap() as u8) * 2u16.pow(i) as u8;
-            }
-            data_new.push(to_add);
-        }
-
-        data_new.reverse();
 
         Self {
             tree_len,
@@ -54,11 +53,11 @@ impl RZFile {
             tree,
             data: data_new,
         }
-	}
-	/// Returns a reference to the RZFile's data, which is compressed
-	pub fn data(&self) -> &Vec<u8> {
-		&self.data
-	}
+    }
+    /// Returns a reference to the RZFile's data, which is compressed
+    pub fn data(&self) -> &Vec<u8> {
+        &self.data
+    }
     /// Saves the compressed version of self to the file at `path`
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
         let mut contents = Vec::with_capacity(5 + self.tree_len as usize + self.data.len());

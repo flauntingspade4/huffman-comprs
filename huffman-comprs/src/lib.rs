@@ -1,7 +1,7 @@
 //! A small crate, defining a [Huffman tree](https://en.wikipedia.org/wiki/Huffman_coding), and easy methods to generate one
 //! # Example
 //! ```
-//! use huffman_comprs::*;
+//! use huffman_comprs::Huffman;
 //!
 //! let input = "This is a test input";
 //!
@@ -24,7 +24,7 @@ pub use rz::RZFile;
 /// A huffman encoding metadata tree.
 /// # Examples
 /// ```
-/// use huffman_comprs::*;
+/// use huffman_comprs::Huffman;
 ///
 /// let script = "aabcd";
 ///
@@ -90,19 +90,17 @@ impl Huffman {
             }
         }
     }
-    /// Attempts to get the `char` associated with a given code
+    /// Attempts to get the `char` associated with a given code.
     /// # Errors
-    /// Returns `None` if no matching code
-    /// is found in the tree
+    /// Returns `None` if no matching code is found in the tree
     pub fn get_char(&self, mut input: Vec<bool>) -> Option<char> {
         input.reverse();
-
         self._get_char(&mut input)
     }
     fn _get_char(&self, input: &mut Vec<bool>) -> Option<char> {
         if self.contents.len() == 1 {
             Some(self.contents[0])
-        } else if input.pop().unwrap() {
+        } else if input.pop()? {
             if let Some(right) = &self.right {
                 right._get_char(input)
             } else {
@@ -114,30 +112,6 @@ impl Huffman {
             None
         }
     }
-    /// Attempts to reconstruct a String from a given Vec<bool>, also taking
-    /// a u8 'zeros', indicating how many '0's are appended upon the end of
-    /// input. This should be the fifth byte of the .rz file
-    pub fn reconstruct(&self, mut data: Vec<bool>, zeros: u8) -> Option<String> {
-        let mut to_return = String::new();
-
-        data.reverse();
-
-        for _ in 0..zeros {
-            data.pop();
-        }
-
-        data.reverse();
-
-        while !data.is_empty() {
-            let c = match self._get_char(&mut data) {
-                Some(c) => c,
-                None => break,
-            };
-            to_return.push(c);
-        }
-
-        Some(to_return)
-    }
     /// The frequency of all the characters in the huffman tree.
     /// This value should be equal to the total length of the string
     /// used to generate this Huffman tree
@@ -148,7 +122,7 @@ impl Huffman {
     pub const fn contents(&self) -> &Vec<char> {
         &self.contents
     }
-    /// Converts self to a `BTreeMap<char, Vec<bool>>`, to allow for faster querying
+    /// Converts self to a `BTreeMap<char, Vec<bool>>`, to allow for faster compression
     pub fn to_btree(&self) -> BTreeMap<char, Vec<bool>> {
         let mut b_tree = BTreeMap::new();
 
@@ -177,6 +151,22 @@ impl Huffman {
             }
         }
     }
+    /// Attempts to reconstruct a String from a given Vec<bool>, also taking
+    /// a u8 'zeros', indicating how many '0's are appended upon the end of
+    /// input. This should be the fifth byte of the .rz file
+    pub fn reconstruct(&self, mut data: Vec<bool>, zeros: u8) -> Option<String> {
+        let mut to_return = String::new();
+
+        for _ in 0..zeros {
+            data.pop();
+        }
+
+        while !data.is_empty() {
+            to_return.push(self._get_char(&mut data)?);
+        }
+
+        Some(to_return)
+    }
     /// Attempts to compress a given `&str` to a `Vec<bool>`, representing it's
     /// compressed version
     ///
@@ -198,18 +188,18 @@ impl Huffman {
 
         Some(output)
     }
-    /// A utility function, splitting up `a` into a `Vec<bool>`, representing
+    /// A utility function, splitting up `byte` into a `Vec<bool>`, representing
     /// it's bits
-    pub fn u8_to_bits(a: u8) -> Vec<bool> {
+    pub fn u8_to_bits(byte: u8) -> Vec<bool> {
         vec![
-            a & 128 == 128,
-            a & 64 == 64,
-            a & 32 == 32,
-            a & 16 == 16,
-            a & 8 == 8,
-            a & 4 == 4,
-            a & 2 == 2,
-            a & 1 == 1,
+            byte & 1 == 1,
+            byte & 2 == 2,
+            byte & 4 == 4,
+            byte & 8 == 8,
+            byte & 16 == 16,
+            byte & 32 == 32,
+            byte & 64 == 64,
+            byte & 128 == 128,
         ]
     }
 }

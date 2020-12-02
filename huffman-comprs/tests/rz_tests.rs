@@ -27,7 +27,7 @@ fn from_nonsense() {
 
     let new_input = file.tree.reconstruct(data, file.zeros).unwrap();
 
-    assert_eq!(new_input.as_str(), input);
-
     std::fs::remove_file(path).unwrap();
+
+    assert_eq!(new_input.as_str(), input);
 }
