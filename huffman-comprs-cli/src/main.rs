@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+
 use huffman_comprs::{Huffman, RZFile};
 
 use clap::{App, Arg, SubCommand};
@@ -36,14 +38,14 @@ fn main() {
     if let Some(matches) = matches.subcommand_matches("compress") {
         let path = matches.value_of("INPUT").unwrap();
 
-        let input = match std::fs::read_to_string(path) {
+        let input = match std::fs::read(path) {
             Ok(t) => t,
-            Err(_) => path.to_string(),
+            Err(_) => path.as_bytes().to_vec(),
         };
 
-        let tree = Huffman::from(input.as_str());
+        let tree = Huffman::from(&input);
 
-        let data = tree.compress(input.as_str()).unwrap();
+        let data = tree.compress(&input).unwrap();
 
         let file = RZFile::new(tree, data);
 
@@ -53,26 +55,21 @@ fn main() {
 
         let buf = std::fs::read(input).unwrap();
 
-        let file = RZFile::from(buf.as_slice());
+        let file = RZFile::try_from(buf.as_slice()).unwrap();
 
         let mut data = Vec::with_capacity(buf.len() * 8);
 
         for a in file.data() {
-            data.append(&mut Huffman::u8_to_bits(*a));
+            data.append(&mut huffman_comprs::u8_to_bits(*a));
         }
 
-        let contents = file
-            .tree
-            .reconstruct(data, file.zeros)
-            .unwrap()
-            .as_bytes()
-            .to_vec();
+        let contents = file.tree.reconstruct(data, file.zeros()).unwrap().to_vec();
 
-        let file_name = match input[..input.len() - 3].rfind('.') {
+        let file_name = match input.rfind('.') {
             Some(t) => input.split_at(t).0,
             None => input,
         };
 
-        std::fs::write(format!("{}.txt", file_name), contents).unwrap();
+        std::fs::write(format!("{}", file_name), contents).unwrap();
     }
 }

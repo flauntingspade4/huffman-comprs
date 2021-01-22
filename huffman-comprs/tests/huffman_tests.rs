@@ -20,7 +20,7 @@ fn serde_testing() {
 
     let bv = bincode::serialize(&huffman).unwrap();
 
-    let huffman_de: Huffman = bincode::deserialize(&bv).unwrap();
+    let huffman_de = bincode::deserialize(&bv).unwrap();
 
     assert_eq!(huffman, huffman_de);
 }

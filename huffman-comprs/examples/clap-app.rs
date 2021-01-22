@@ -1,4 +1,4 @@
-use std::fs;
+use std::{convert::TryFrom, fs};
 
 use huffman_comprs::{Huffman, RZFile};
 
@@ -41,13 +41,13 @@ fn main() {
     if let Some(matches) = matches.subcommand_matches("compress") {
         let path = matches.value_of("INPUT").unwrap();
 
-        let input = fs::read_to_string(path).unwrap();
+        let input = fs::read(path).unwrap();
 
         // Generates a Huffman tree from the given input
-        let tree = Huffman::from(input.as_str());
+        let tree: Huffman<u8> = Huffman::from(&input);
 
         // Compresses the given input, using the Huffman tree
-        let data = tree.compress(input.as_str()).unwrap();
+        let data = tree.compress(&input).unwrap();
 
         // Turns the Huffman tree and compressed data to a RZ file
         let file = RZFile::new(tree, data);
@@ -60,23 +60,18 @@ fn main() {
         let buf = fs::read(input).unwrap();
 
         // Generates an RZ file from input's contents
-        let file = RZFile::from(buf.as_slice());
+        let file = RZFile::try_from(buf.as_slice()).unwrap();
 
         // Pre-allocates for data, to reduce the amount of allocations nededed
         let mut data = Vec::with_capacity(buf.len() * 8);
 
         // Compressed data is represented in fewer bits than a byte, thus the compressed data must be split into a Vec<bool>
         for a in file.data() {
-            data.append(&mut Huffman::u8_to_bits(*a));
+            data.append(&mut huffman_comprs::u8_to_bits(*a));
         }
 
         // Reconstructs (decompresses) the data, using the given huffman tree, before converting it to a Vec<u8>
-        let contents = file
-            .tree
-            .reconstruct(data, file.zeros)
-            .unwrap()
-            .as_bytes()
-            .to_vec();
+        let contents = file.tree.reconstruct(data, file.zeros()).unwrap().to_vec();
 
         // Parses the file extension from the input, assuming input's file extension is `.rz`
         let file_name = match input[..input.len() - 3].rfind('.') {
